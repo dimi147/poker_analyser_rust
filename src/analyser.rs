@@ -1,7 +1,7 @@
 use crate::deck::Deck;
 use crate::hand::Hand;
 use std::cmp::max;
-use std::ops::ControlFlow;
+use std::ops::{ControlFlow, RangeFull};
 
 type Suit = u16;
 
@@ -58,6 +58,52 @@ impl Data {
 fn run_analysis(suits: &[Suit; 4], merged: Suit) -> Hand {
     // auto b = std::chrono::high_resolution_clock().now();
     
+    let mut data = analyse_suits_separately(&suits);
+
+    if let Some(hand) = check_straightflush(&data) {
+        return hand;
+    } else if let Some(hand) = check_quads(&data) {
+        return hand;
+    } else if let Some(hand) = check_fullhouse(&data) {
+        return hand;
+    } else if let Some(hand) = check_flush(&data, &suits) {
+        return hand;
+    }
+
+    analyse_merged_suits(merged, &mut data);    
+   
+    if let Some(hand) = check_straight(&data) {
+        return hand;
+    } else if let Some(hand) = check_set(&data) {
+        return hand;
+    } else if let Some(hand) = check_pairs(&data) {
+        return hand;
+    } else {
+        let mut cards: Vec<u8> = vec!();
+
+        data.values.iter().rev().enumerate().for_each(|(i, count)| {
+            if *count > 0 {
+                cards.push(i as u8);
+            }
+        });
+
+        return Hand::highcard(cards.as_slice()[0..5].try_into().unwrap());
+    }
+
+    // auto e = std::chrono::high_resolution_clock().now();
+    // std::cout << std::dec << std::chrono::duration_cast<std::chrono::nanoseconds>(e-b).count() << std::endl;
+}
+
+fn analyse_straight(suit: Suit, field: &mut Option<u8>, mask: Suit, top: u8) {
+    if (mask & suit) == mask {
+        *field = Some(match *field {
+            Some(x) => max(x, top),
+            None => top,
+        })
+    }
+}
+
+fn analyse_suits_separately(suits: &[Suit; 4]) -> Data {
     let mut data = Data::new();
 
     for (s, suit) in suits.iter().enumerate() {
@@ -107,11 +153,47 @@ fn run_analysis(suits: &[Suit; 4], merged: Suit) -> Hand {
         }
     }
 
+    data
+}
+
+fn analyse_merged_suits(merged: Suit, data: &mut Data) {
+    (0..9).for_each(|v| {
+        let mask = (0x1f as Suit) << v;
+        if (mask & merged) == mask {
+            data.straight = Some(match data.straight {
+                Some(x) => max(x, v + 4),
+                None => v + 4,
+            })
+        }
+    });
+
+    // for (auto c = 0; c < 13; ++c) {
+    //     if (c < 9) {
+    //         auto mask = (Suit_t{0x1f} << c);
+    //         if ((mask & merged) == mask)
+    //             straight = std::max(straight, c + 4);
+    //     }
+    // }
+
+    let mask = 0x100f;
+    if (mask & merged) == mask {
+        data.straight = Some(match data.straight {
+            Some(x) => max(x, 3),
+            None => 3,
+        })
+    }
+}
+
+fn check_straightflush(data: &Data) -> Option<Hand> {
     if let (Some(straightflush), Some(flushsuit)) = (data.straightflush, data.flushsuit) {
+        return Some(Hand::straightflush(straightflush, flushsuit));
+    } 
 
-        return Hand::straightflush(straightflush, flushsuit);
+    None
+}
 
-    } else if data.numquads == 1 {
+fn check_quads(data: &Data) -> Option<Hand> {
+    if data.numquads == 1 {
         let mut value = 0;
         let mut kicker = 0;
 
@@ -128,9 +210,15 @@ fn run_analysis(suits: &[Suit; 4], merged: Suit) -> Hand {
             ControlFlow::Continue(())
         });
 
-        return Hand::quads(value, kicker);
+        return Some(Hand::quads(value, kicker));
 
-    } else if data.numsets > 0 && data.numsets + data.numpairs > 1 {
+    } 
+
+    None
+}
+
+fn check_fullhouse(data: &Data) -> Option<Hand> {
+    if data.numsets > 0 && data.numsets + data.numpairs > 1 {
 
         let mut set: Option<u8> = None;
         let mut pair: Option<u8> = None;
@@ -143,9 +231,15 @@ fn run_analysis(suits: &[Suit; 4], merged: Suit) -> Hand {
             }
         });
 
-        return Hand::fullhouse(set.unwrap(), pair.unwrap());
+        return Some(Hand::fullhouse(set.unwrap(), pair.unwrap()));
 
-    } else if (data.flushsuit.is_some()) {
+    } 
+
+    None
+}
+
+fn check_flush(data: &Data, suits: &[Suit; 4]) -> Option<Hand> {
+    if data.flushsuit.is_some() {
         let mut cards: Vec<u8> = vec!();
         let suit = suits[data.flushsuit.unwrap() as usize];
 
@@ -156,48 +250,22 @@ fn run_analysis(suits: &[Suit; 4], merged: Suit) -> Hand {
             }
         });
 
-        return Hand::flush(cards[cards.len()-5..].try_into().unwrap(), data.flushsuit.unwrap());
+        return Some(Hand::flush(cards[cards.len()-5..].try_into().unwrap(), data.flushsuit.unwrap()));
     }
 
-    let check_straight = |field: &mut Option<u8>, mask: Suit, top: u8| {
-        if (mask & merged) == mask {
-            *field = Some(match *field {
-                Some(x) => max(x, top),
-                None => top,
-            })
-        }
-    };
+    None
+}
 
-    (0..9).for_each(|v| {
-        let mask = (0x1f as Suit) << v;
-        if (mask & merged) == mask {
-            data.straight = Some(match data.straight {
-                Some(x) => max(x, v + 4),
-                None => v + 4,
-            })
-        }
-    });
-    // for (auto c = 0; c < 13; ++c) {
-    //     if (c < 9) {
-    //         auto mask = (Suit_t{0x1f} << c);
-    //         if ((mask & merged) == mask)
-    //             straight = std::max(straight, c + 4);
-    //     }
-    // }
-
-    let mask = 0x100f;
-    if (mask & merged) == mask {
-        data.straight = Some(match data.straight {
-            Some(x) => max(x, 3),
-            None => 3,
-        })
-    }
-
+fn check_straight(data: &Data) -> Option<Hand> {
     if let Some(top) = data.straight {
+        return Some(Hand::straight(top));
+    } 
 
-        return Hand::straight(top);
+    None
+}
 
-    } else if (data.numsets > 0) {
+fn check_set(data: &Data) -> Option<Hand> {
+    if data.numsets > 0 {
         let mut set: u8 = 0;
         let mut kickers: [u8; 2] = [0; 2];
 
@@ -225,9 +293,15 @@ fn run_analysis(suits: &[Suit; 4], merged: Suit) -> Hand {
             //         kicker2 = i;
         }
 
-        return Hand::set(set, kickers);
+        return Some(Hand::set(set, kickers));
 
-    } else if (data.numpairs > 0) {
+    } 
+
+    None
+}
+
+fn check_pairs(data: &Data) -> Option<Hand> {
+    if data.numpairs > 0 {
 
         let mut pairs: Vec<u8> = vec!();
         let mut kickers: Vec<u8> = vec!();
@@ -243,21 +317,9 @@ fn run_analysis(suits: &[Suit; 4], merged: Suit) -> Hand {
             }
         });
 
-        return Hand::pairs(pairs, kickers);
+        return Some(Hand::pairs(pairs, kickers));
 
-    } else {
-        let mut cards: Vec<u8> = vec!();
+    } 
 
-        data.values.iter().rev().enumerate().for_each(|(i, count)| {
-        // for (int i = values.size() - 1; cards.size() < 5; --i)
-            if (*count > 0) {
-                cards.push(i as u8);
-            }
-        });
-
-        return Hand::highcard(cards.as_slice()[0..5].try_into().unwrap());
-    }
-    
-    // auto e = std::chrono::high_resolution_clock().now();
-    // std::cout << std::dec << std::chrono::duration_cast<std::chrono::nanoseconds>(e-b).count() << std::endl;
+    None
 }
