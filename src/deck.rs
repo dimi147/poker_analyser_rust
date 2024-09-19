@@ -11,11 +11,11 @@ pub fn to_deck(cards: &Vec<&str>) -> Deck {
     deck
 }
 
-fn card_to_string(value: u8) -> String {
+pub fn card_to_string(value: u8) -> String {
     // let suit = ;
     // let number = value % 13;
     String::from(
-        match value / 13 {
+        match value % 13 {
             0 => "2",
             1 => "3",
             2 => "4",
@@ -30,16 +30,16 @@ fn card_to_string(value: u8) -> String {
             11 => "K",
             12 => "A",
             _ => panic!(),
-        }) + match value % 13 {
-            0 => "C",
-            1 => "H",
-            2 => "S",
-            3 => "D",
+        }) + match value / 13 {
+            0 => "c",
+            1 => "h",
+            2 => "s",
+            3 => "d",
             _ => panic!(),
         }
 }
 
-fn card_from_string(s: &str) -> u8 {
+pub fn card_from_string(s: &str) -> u8 {
     // let value = VALUES.iter().position(|&r| r == &s[0..1]).unwrap() as u8;
     // let suit = SUITS.iter().position(|&r| r == &s[0..2]).unwrap() as u8;
     // (suit * 4) + value
@@ -61,15 +61,15 @@ fn card_from_string(s: &str) -> u8 {
         _ => {panic!()},
     };
 
-    let suit = match &s[1..2] {
-        "C" => 0,
-        "H" => 1,
-        "S" => 2,
-        "D" => 3,
+    let suit = match &s[1..2].to_lowercase()[..] {
+        "c" => 0,
+        "h" => 1,
+        "s" => 2,
+        "d" => 3,
         _ => {panic!()},
     };
 
-    suit * 4 + value
+    suit * 13 + value
 
     // let value = Value::try_from(&s[0..1]).unwrap() as u8;
     // let suit = Suit::try_from(&s[1..2]).unwrap() as u8;
