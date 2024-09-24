@@ -1,14 +1,29 @@
+use rand::distributions::Uniform;
+use rand::prelude::Distribution;
+
 pub type Deck = u64;
 
 // const VALUES: [&str; 13] = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
 // const SUITS: [&str; 4] = ["C", "H", "S", "D"];
 
-pub fn to_deck(cards: &Vec<&str>) -> Deck {
+pub fn to_deck<T: AsRef<str>>(cards: &[T]) -> Deck
+{
     let mut deck: Deck = 0;
     for card in cards {
-        deck &= (1 << card_from_string(card));
+        deck |= (1 << card_from_string(card.as_ref()));
     }
     deck
+}
+
+pub fn from_deck(deck: Deck) -> Vec<String> {
+    assert_eq!(deck >> 52, 0);
+    let mut v = vec![];
+    (0..52).for_each(|i|{
+        if (deck & 0x1 << i) > 0 {
+            v.push(card_to_string(i));
+        }
+    });
+    v
 }
 
 pub fn card_to_string(value: u8) -> String {
@@ -74,4 +89,52 @@ pub fn card_from_string(s: &str) -> u8 {
     // let value = Value::try_from(&s[0..1]).unwrap() as u8;
     // let suit = Suit::try_from(&s[1..2]).unwrap() as u8;
     // suit * 4 + value
+}
+
+pub fn get_random_card(deck: Deck) -> Deck {
+    let distribution = Uniform::new(0, deck.count_zeros() - 12);
+    let mut generator = rand::thread_rng();
+    let mut value = distribution.sample(&mut generator);
+
+    for i in 0..52 {
+        if deck & (0x1 << i) != 0 {
+            continue;
+        }
+        if value == 0 {
+            return 0x1 << i;
+        }
+        value -= 1;
+    }
+
+    panic!();
+}
+
+#[cfg(test)]
+mod test {
+    use super::{*};
+
+    #[test]
+    fn test_card_string_conversions() {
+        (0..52).for_each(|val| {
+            let s = super::card_to_string(val);
+            assert_eq!(super::card_from_string(&s), val);
+        });
+    }
+
+    #[test]
+    fn test_deck_conversions() {
+        let d = 0xfffffffffffff as Deck;
+        let c = from_deck(d);
+        let d2 = to_deck(&c);
+        assert_eq!(d, d2);
+    }
+
+    #[test]
+    fn test_random_deck_generation() {
+        let mut deck = 0;
+        (0..52).for_each(|_| {
+            deck += get_random_card(deck);
+        });
+        assert_eq!(deck, 0xfffffffffffff);
+    }
 }

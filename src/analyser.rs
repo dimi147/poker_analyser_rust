@@ -60,7 +60,7 @@ fn run_analysis(suits: &[Suit; 4], merged: Suit) -> Hand {
     // auto b = std::chrono::high_resolution_clock().now();
     
     let mut data = analyse_suits_separately(&suits);
-    println!("{:?}", data);
+    // println!("{:?}", data);
 
     if let Some(hand) = check_straightflush(&data) {
         return hand;
@@ -254,7 +254,7 @@ fn check_set(data: &Data) -> Option<Hand> {
             }
         }
 
-        return Some(Hand::set(set, kickers));
+        return Some(Hand::set(set, &kickers));
 
     } 
 
@@ -268,9 +268,10 @@ fn check_pairs(data: &Data) -> Option<Hand> {
         let mut kickers: Vec<u8> = vec!();
 
         data.values.iter().rev().enumerate().for_each(|(i, count)| {
-            if *count > 1 && pairs.len() < data.numpairs as usize {
+            let numpairs = match data.numpairs > 1 { true => 2, false => 1};
+            if *count > 1 && pairs.len() < numpairs as usize {
                 pairs.push(i as u8);
-            } else if *count >= 1 && kickers.len() < 5 - (2 * data.numpairs) as usize{
+            } else if *count >= 1 && kickers.len() < 5 - (2 * numpairs) as usize {
                 kickers.push(i as u8);
             }
         });
@@ -280,4 +281,32 @@ fn check_pairs(data: &Data) -> Option<Hand> {
     } 
 
     None
+}
+
+#[cfg(test)]
+mod test {
+    use crate::hand;
+    use crate::deck;
+
+    use super::analyse;
+    
+    #[test]
+    fn test() {
+        use crate::hand::Hand;
+        let a = Hand::pairs(vec![10], vec![1,4,5]);
+        let b = Hand::pairs(vec![0, 1], vec![3]);
+        assert!(a < b);
+    
+        let a = Hand::fullhouse(8, 10);
+        let b = Hand::fullhouse(10, 8);
+        assert!(a < b);
+
+        assert_eq!(super::analyse(0b1111111 as deck::Deck), hand::Hand::straightflush(6, 0));
+    }
+
+    fn test_check_pair() {
+        let deck = deck::to_deck(&["Ad", "Ac", "7d", "8c", "Th", "9s", "3s"]);
+        let hand = analyse(deck);
+        assert_eq!(hand, hand::Hand::pairs(vec![12], vec![9, 8, 7]));
+    }
 }

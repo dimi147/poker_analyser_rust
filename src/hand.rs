@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::fmt::Display;
 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub enum Hand {
@@ -21,8 +22,8 @@ impl Hand {
         Hand::Pairs(Pairs{pairs: pairs, kickers: kickers})
     }
 
-    pub fn set(set: u8, kickers: [u8; 2]) -> Self {
-        Hand::Set(Set{set: set, kickers: kickers})
+    pub fn set(set: u8, kickers: &[u8; 2]) -> Self {
+        Hand::Set(Set{set: set, kickers: *kickers})
     }
 
     pub fn straight(top: u8) -> Self {
@@ -44,7 +45,18 @@ impl Hand {
     pub fn straightflush(top: u8, suit: u8) -> Self {
         Hand::StraightFlush(StraightFlush{top, suit})
     }
+}
 
+
+impl Display for Hand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Hand::HighCard(cards) => format!("[{}, {}, {}, {}, {}]",cards[0], cards[1], cards[2], cards[3], cards[4]),
+            // Hand::Set(set) => format!("Set of {} with {} kickers", set.set, set.kickers),
+            _ => "else".to_string(),
+        };
+        write!(f, "{}", s)
+    }
 }
 
 type HighCard = [u8; 5];
@@ -147,5 +159,23 @@ impl PartialEq for StraightFlush {
 impl PartialOrd for StraightFlush {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.top.partial_cmp(&other.top)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::Hand;
+    #[test]
+    fn compare_highcard_pair() {
+        let highcard = Hand::highcard(&[12,11,10,9,8]);
+        let pair = Hand::pairs(vec![2], vec![3,4,5]);
+        assert!(pair > highcard);
+    }
+
+    #[test]
+    fn compare_pair_set() {
+        let set = Hand::set(2, &[3, 4]);
+        let pair = Hand::pairs(vec![13, 12], vec![11]);
+        assert!(set > pair);
     }
 }
