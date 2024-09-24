@@ -83,7 +83,7 @@ fn run_analysis(suits: &[Suit; 4], merged: Suit) -> Hand {
     } else {
         let mut cards: Vec<u8> = vec!();
 
-        data.values.iter().rev().enumerate().for_each(|(i, count)| {
+        data.values.iter().enumerate().rev().for_each(|(i, count)| {
             if *count > 0 {
                 cards.push(i as u8);
             }
@@ -167,7 +167,7 @@ fn check_quads(data: &Data) -> Option<Hand> {
         let mut value = 0;
         let mut kicker = 0;
 
-        data.values.iter().rev().enumerate().try_for_each(|(i, count)| {
+        data.values.iter().enumerate().rev().try_for_each(|(i, count)| {
             match count {
                 4 => value = i as u8,
                 _ => kicker = max(kicker, i as u8),
@@ -193,7 +193,7 @@ fn check_fullhouse(data: &Data) -> Option<Hand> {
         let mut set: Option<u8> = None;
         let mut pair: Option<u8> = None;
 
-        data.values.iter().rev().enumerate().for_each(|(i, count)| {
+        data.values.iter().enumerate().rev().for_each(|(i, count)| {
             if *count == 3 && set.is_none() {
                 set = Some(i as u8);
             } else if *count > 1 && pair.is_none() {
@@ -239,7 +239,7 @@ fn check_set(data: &Data) -> Option<Hand> {
         let mut set: u8 = 0;
         let mut kickers: [u8; 2] = [0; 2];
 
-        for (i, value) in data.values.iter().rev().enumerate() {
+        for (i, value) in data.values.iter().enumerate().rev() {
 
             match value {
                 3 => set = i as u8,
@@ -267,7 +267,7 @@ fn check_pairs(data: &Data) -> Option<Hand> {
         let mut pairs: Vec<u8> = vec!();
         let mut kickers: Vec<u8> = vec!();
 
-        data.values.iter().rev().enumerate().for_each(|(i, count)| {
+        data.values.iter().enumerate().rev().for_each(|(i, count)| {
             let numpairs = match data.numpairs > 1 { true => 2, false => 1};
             if *count > 1 && pairs.len() < numpairs as usize {
                 pairs.push(i as u8);
@@ -304,9 +304,13 @@ mod test {
         assert_eq!(super::analyse(0b1111111 as deck::Deck), hand::Hand::straightflush(6, 0));
     }
 
+    #[test]
     fn test_check_pair() {
         let deck = deck::to_deck(&["Ad", "Ac", "7d", "8c", "Th", "9s", "3s"]);
+        println!("{:b}", 0xffffffffffffffff as u64);
+        println!("{:b}", deck);
         let hand = analyse(deck);
-        assert_eq!(hand, hand::Hand::pairs(vec![12], vec![9, 8, 7]));
+        println!("{}", hand);
+        assert_eq!(hand, hand::Hand::pairs(vec![12], vec![8, 7, 6]));
     }
 }
