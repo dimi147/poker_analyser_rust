@@ -1,3 +1,4 @@
+use crate::deck::card_to_string;
 use std::cmp::Ordering;
 use std::fmt::Display;
 
@@ -47,15 +48,53 @@ impl Hand {
     }
 }
 
-
 impl Display for Hand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            Hand::HighCard(cards) => format!("[{}, {}, {}, {}, {}]",cards[0], cards[1], cards[2], cards[3], cards[4]),
-            // Hand::Set(set) => format!("Set of {} with {} kickers", set.set, set.kickers),
-            _ => "else".to_string(),
-        };
-        write!(f, "{}", s)
+
+        fn cts<T>(val: T) -> String
+            where T: TryInto<i32>,
+            <T as TryInto<i32>>::Error: std::fmt::Debug
+        {
+            let int: i32 = val.try_into().unwrap();
+            if int < 0i32 {
+                return "A".to_string();
+            }
+            card_to_string(int as u8)[0..1].to_string()
+        }
+
+        match self {
+            Hand::HighCard(cards) => {
+                write!(f, "highcard (")?;
+                for c in cards {
+                    write!(f, "{},", cts(*c))?;
+                }
+                write!(f, "{})", 8u8 as char)
+            },
+            Hand::Pairs(Pairs{pairs, kickers}) => {
+                match pairs.len() { 
+                    1 => write!(f, "pair {} ({}, {}, {})", cts(pairs[0]), cts(kickers[0]), cts(kickers[1]), cts(kickers[2])),
+                    2 => write!(f, "pairs {} + {} ({})", cts(pairs[0]), cts(pairs[1]), cts(kickers[0])),
+                     _ => panic!(),
+                }
+            }
+            Hand::Set(set) => write!(f, "set {} ({}, {})", cts(set.set), cts(set.kickers[0]), cts(set.kickers[1])),
+            Hand::Straight(top) => write!(f, "straight {}-{}", cts(*top as i32 - 4), cts(*top)),
+            Hand::Flush(Flush{cards, suit}) => {
+                write!(f, "flush (")?;
+                for c in cards {
+                    write!(f, "{},", card_to_string(c + suit * 13))?;
+                }
+                write!(f, "{})", 8u8 as char)
+            },
+            Hand::FullHouse(FullHouse{set, pair}) => write!(f, "fullhouse {} + {}", set, pair),
+            Hand::Quads(Quads{quads, kicker}) => write!(f, "quads {} + {}", quads, kicker),
+            Hand::StraightFlush(StraightFlush{top, suit}) => write!(f, "straightflush {}-{}"
+                                                                        , card_to_string( match *top as i32 - 4 < 0 {
+                                                                            true => 12,
+                                                                            false => top - 4
+                                                                        } + suit * 13)
+                                                                        , card_to_string(top + suit * 13)),
+        }
     }
 }
 
@@ -90,19 +129,6 @@ struct Set {
     set: u8,
     kickers: [u8; 2],
 }
-
-// impl PartialOrd for Set {
-//     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-//         match self.set.partial_cmp(&other.set) {
-//             Some(Ordering::Equal) => {},
-//             order => return order,
-//         }
-
-//         assert_eq!(self.kickers.len(), other.kickers.len());
-
-//         self.kickers.partial_cmp(&other.kickers)
-//     }
-// }
 
 type Straight = u8;
 
