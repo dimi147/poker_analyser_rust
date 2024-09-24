@@ -1,4 +1,5 @@
-use super::deck::Deck;
+use crate::deck::Deck;
+use crate::analyser;
 
 fn find_all_combinations(mut deck: Deck, k: u32) -> Vec<Deck> {
     let n = deck.count_zeros() - 12;
@@ -41,26 +42,17 @@ fn find_next_combination(combinations: &mut Vec<u64>, deck: &mut u64, hand_size:
 
 fn compare_player_hands(players: &Vec<Deck>, combinations: &Vec<Deck>) -> Vec<f32> {
     let mut player_odds = vec![0; players.len()];
+    let all_players: Deck = players.iter().sum();
 
-    combinations.iter().for_each(|combination: &u64| {
-        let mut combination = *combination;
-        players.iter().for_each(|player| {
-            combination -= player;
-        });
-
-        let mut hands = vec![];
-
-        players.iter().for_each(|player| {
-            combination += player;
-            hands.push(crate::analyser::analyse(combination));
-            combination -= player;
-        });
-
+    for combination in combinations.iter().map(|c| c - all_players) {
+        let mut hands = vec![analyser::analyse(combination + players[0])];
         let mut winner_index = 0;
-        let mut winners = vec![0];
+        let mut winners = vec![winner_index];
 
-        (1..hands.len()).for_each(|i| {
-            match hands[i].partial_cmp(&hands[winner_index]) {
+        for i in 1..players.len() {
+            let combination = combination + players[i];
+            hands.push(analyser::analyse(combination));
+            match hands[hands.len() - 1].partial_cmp(&hands[hands.len() - 2]) {
                 Some(std::cmp::Ordering::Equal) => winners.push(i),
                 Some(std::cmp::Ordering::Less) => {},
                 Some(std::cmp::Ordering::Greater) => {
@@ -70,14 +62,12 @@ fn compare_player_hands(players: &Vec<Deck>, combinations: &Vec<Deck>) -> Vec<f3
                 }
                 None => panic!(),
             }
-        });
+        }
 
         if winners.len() == 1 {
             player_odds[winners[0]] += 1;
         }
-    });
-
-    println!("{:?}", player_odds);
+    }
 
     player_odds.iter().map(|i| {
         *i as f32 / combinations.len() as f32
@@ -87,136 +77,38 @@ fn compare_player_hands(players: &Vec<Deck>, combinations: &Vec<Deck>) -> Vec<f3
 #[cfg(test)]
 mod test {
     use super::{*};
-    use crate::deck::{*};
 
     #[test]
-    fn test() {
+    fn test_n50_k5() {
         let combinations: Vec<u64> = find_all_combinations(0b110, 5);
         assert_eq!(combinations.len() as u64, calculate_combination_num(52 - 2, 5));
     }
 
     #[test]
     #[should_panic(expected = "assertion failed: n >= k")]
-    fn test1() {
+    fn test_empty_deck() {
         let combinations: Vec<u64> = find_all_combinations(0xfffffffffffff, 1);
     }
 
     #[test]
     #[should_panic(expected = "attempt to subtract with overflow")]
-    fn test2() {
+    fn test_overflown_deck() {
         let combinations: Vec<u64> = find_all_combinations(0x1fffffffffffff, 0);
     }
 
     #[test]
-    fn test3() {
+    fn test_n46_k1() {
         let combinations = find_all_combinations(0b1111110, 1);
         assert_eq!(combinations.len() as u64, calculate_combination_num(52 - 6, 1));
     }
 
     #[test]
-    fn test_predictor() {
+    fn test_AKsuited_vs_72suited() {
         let players = &vec![0b100001, 0b1100000000000];
         let combinations = find_all_combinations(players[0] + players[1], 5);
         assert_eq!(combinations.len() as u64, calculate_combination_num(48, 5));
         let odds = compare_player_hands(players, &combinations);
-        println!("{:?}", players);
-        println!("{:?}", odds);
+        let tie_odds = 1f32 - odds[0] - odds[1];
+        assert_eq!((tie_odds * 100000f32).trunc() as i32, 637);
     }
 }
-/*
-    static void calculate(const unsigned k, const std::vector<CardValue_52_t>& cards, std::vector<std::vector<CardValue_52_t>>& combinations, 
-                          std::vector<CardValue_52_t>& combination, unsigned index = 0)
-    {
-        if (combination.size() == k) {
-            // combinations.push_back(combination);
-            return;
-        }
-
-        for (auto i = index; i < cards.size(); ++i) {
-            combination.push_back(cards[i]);
-            calculate(k, cards, combinations, combination, i + 1);
-            combination.pop_back();
-        }
-    }
-};
-
-class Predictor {
-public:
-    Predictor(IAnalyzer& analyzer) : m_analyzer{analyzer} {}
-
-    void predict(const std::vector<std::vector<CardValue_52_t>>& playerHands) {
-#ifdef DEBUG
-        auto tstart = std::chrono::high_resolution_clock::now();
-#endif
-
-        auto cards = getAvailableCards(playerHands);
-        auto combinations = CombinationCalculator::calculate(cards, 7 - playerHands[0].size());
-        std::vector<unsigned> wins(playerHands.size(), 0);
-        // std::vector<unsigned> ties(playerHands.size(), 0);
-
-        for (auto& combination : combinations) {
-            auto winner = comparePlayerHandsForCombination(playerHands, combination);
-            if (winner >= 0)
-                wins[winner] += 1;
-        }
-
-        for (auto p = 0; p < playerHands.size(); ++p) {
-            std::cout << "player "<< p << ": " << 100. * wins[p] / combinations.size() << "%" << std::endl;
-        }
-
-#ifdef DEBUG
-        auto tend = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(tend - tstart);
-        std::cout << "combination analysis takes " << duration.count() << " ms\n";
-#endif
-    }
-
-private:
-    std::vector<CardValue_52_t> getAvailableCards(const std::vector<std::vector<CardValue_52_t>>& players) {
-        std::vector<bool> deck(52, true);
-        for (auto& player : players)
-            for (auto card : player)
-                deck[card] = false;
-
-        std::vector<CardValue_52_t> cards;
-        for (auto c = 0; c < deck.size(); ++c)
-            if (deck[c])
-                cards.push_back(c);
-        
-        return cards;
-    }
-
-    int comparePlayerHandsForCombination(const std::vector<std::vector<CardValue_52_t>>& players, 
-                                          std::vector<CardValue_52_t>& combination) {
-        std::unique_ptr<Hand> winningHand = std::make_unique<HighCard>(std::vector<CardValue_13_t>{5, 3, 2, 1, 0});
-        std::vector<unsigned> winners;
-
-        for (auto p = 0; p < players.size(); ++p) {
-            auto& player = players[p];
-
-            for (auto card : player)
-                combination.push_back(card);
-
-            auto hand = m_analyzer.analyze(combination);
-
-            for (auto c = 0; c < player.size(); ++c)
-                combination.pop_back();
-            
-            if (*winningHand < *hand) {
-                winningHand = std::move(hand);
-                winners.clear();
-                winners.push_back(p);
-            } else if (*winningHand == *hand) {
-                winners.push_back(p);
-            }
-        }
-
-        if (winners.size() == 1)
-            return winners[0];
-        return -1;
-    }
-
-    IAnalyzer&  m_analyzer;
-};
-
-*/
