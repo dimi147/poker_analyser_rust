@@ -68,7 +68,7 @@ impl Display for Hand {
                 for c in cards {
                     write!(f, "{},", cts(*c))?;
                 }
-                write!(f, "{})", 8u8 as char)
+                write!(f, "{})", 8u8 as char)   // backspace
             },
             Hand::Pairs(Pairs{pairs, kickers}) => {
                 match pairs.len() { 
@@ -84,7 +84,7 @@ impl Display for Hand {
                 for c in cards {
                     write!(f, "{},", card_to_string(c + suit * 13))?;
                 }
-                write!(f, "{})", 8u8 as char)
+                write!(f, "{})", 8u8 as char) // backspace
             },
             Hand::FullHouse(FullHouse{set, pair}) => write!(f, "fullhouse {} + {}", set, pair),
             Hand::Quads(Quads{quads, kicker}) => write!(f, "quads {} + {}", quads, kicker),
