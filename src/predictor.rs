@@ -1,6 +1,14 @@
 use crate::deck::Deck;
 use crate::analyser;
 
+pub fn predict(players: &[Deck]) -> (f32, f32) {
+    let deck = players.iter().sum();
+    let combinations = find_all_combinations(deck, 5);
+    let odds = compare_player_hands(players, &combinations);
+    let tie_odds: f32= odds.iter().sum();
+    (odds[0], 1f32 - tie_odds)
+}
+
 fn find_all_combinations(mut deck: Deck, k: u32) -> Vec<Deck> {
     let n = deck.count_zeros() - 12;
     assert!(n >= k);
@@ -40,7 +48,7 @@ fn find_next_combination(combinations: &mut Vec<u64>, deck: &mut u64, hand_size:
     });
 }
 
-fn compare_player_hands(players: &Vec<Deck>, combinations: &Vec<Deck>) -> Vec<f32> {
+fn compare_player_hands(players: &[Deck], combinations: &[Deck]) -> Vec<f32> {
     let mut player_odds = vec![0; players.len()];
     let all_players: Deck = players.iter().sum();
 
