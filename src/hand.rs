@@ -15,24 +15,29 @@ pub enum Hand {
 }
 
 impl Hand {
-    pub fn highcard(cards: &[u8; 5]) -> Self {
-        Hand::HighCard(*cards)
+    pub fn highcard(cards: &[u8]) -> Self {
+        assert!(cards.len() == 5);
+        Hand::HighCard(cards.try_into().unwrap())
     }
 
-    pub fn pairs(pairs: Vec<u8>, kickers: Vec<u8>) -> Self {
-        Hand::Pairs(Pairs{pairs: pairs, kickers: kickers})
+    pub fn pairs(pairs: &[u8], kickers: &[u8]) -> Self {
+        assert!(pairs.len() == 1 || pairs.len() == 2);
+        assert!(pairs.len() * 2 + kickers.len() == 5);
+        Hand::Pairs(Pairs{pairs: pairs.as_ref().to_vec() , kickers: kickers.as_ref().to_vec()})
     }
 
-    pub fn set(set: u8, kickers: &[u8; 2]) -> Self {
-        Hand::Set(Set{set: set, kickers: *kickers})
+    pub fn set(set: u8, kickers: &[u8]) -> Self {
+        assert!(kickers.len() == 2);
+        Hand::Set(Set{set: set, kickers: kickers.try_into().unwrap()})
     }
 
     pub fn straight(top: u8) -> Self {
         Hand::Straight(top)
     }
 
-    pub fn flush(cards: &[u8; 5], suit: u8) -> Self {
-        Hand::Flush(Flush{cards: *cards, suit: suit})
+    pub fn flush(cards: &[u8], suit: u8) -> Self {
+        assert!(cards.len() == 5);
+        Hand::Flush(Flush{cards: cards.try_into().unwrap(), suit: suit})
     }
 
     pub fn fullhouse(set: u8, pair: u8) -> Self {
@@ -194,14 +199,28 @@ mod test {
     #[test]
     fn compare_highcard_pair() {
         let highcard = Hand::highcard(&[12,11,10,9,8]);
-        let pair = Hand::pairs(vec![2], vec![3,4,5]);
+        let pair = Hand::pairs(&vec![2], &vec![3,4,5]);
         assert!(pair > highcard);
     }
 
     #[test]
     fn compare_pair_set() {
         let set = Hand::set(2, &[3, 4]);
-        let pair = Hand::pairs(vec![13, 12], vec![11]);
+        let pair = Hand::pairs(&vec![13, 12], &vec![11]);
         assert!(set > pair);
+    }
+
+    #[test]
+    fn compare_pairs() {
+        let a = Hand::pairs(&[10], &[1, 4, 5]);
+        let b = Hand::pairs(&[0, 1], &[3]);
+        assert!(a < b);
+    }
+
+    #[test]
+    fn compare_fullhouses() {
+        let a = Hand::fullhouse(8, 10);
+        let b = Hand::fullhouse(10, 8);
+        assert!(a < b);
     }
 }

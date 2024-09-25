@@ -276,7 +276,7 @@ fn check_pairs(data: &Data) -> Option<Hand> {
             }
         });
 
-        return Some(Hand::pairs(pairs, kickers));
+        return Some(Hand::pairs(&pairs, &kickers));
 
     } 
 
@@ -285,32 +285,19 @@ fn check_pairs(data: &Data) -> Option<Hand> {
 
 #[cfg(test)]
 mod test {
-    use crate::hand;
+    use super::*;
+    use crate::hand::Hand;
     use crate::deck;
 
-    use super::analyse;
-    
     #[test]
-    fn test() {
-        use crate::hand::Hand;
-        let a = Hand::pairs(vec![10], vec![1,4,5]);
-        let b = Hand::pairs(vec![0, 1], vec![3]);
-        assert!(a < b);
-    
-        let a = Hand::fullhouse(8, 10);
-        let b = Hand::fullhouse(10, 8);
-        assert!(a < b);
-
-        assert_eq!(super::analyse(0b1111111 as deck::Deck), hand::Hand::straightflush(6, 0));
+    fn test_straightflush() {
+        assert_eq!(super::analyse(0b1111111 as deck::Deck), Hand::straightflush(6, 0));
     }
 
     #[test]
-    fn test_check_pair() {
+    fn test_pair() {
         let deck = deck::to_deck(&["Ad", "Ac", "7d", "8c", "Th", "9s", "3s"]);
-        println!("{:b}", 0xffffffffffffffff as u64);
-        println!("{:b}", deck);
         let hand = analyse(deck);
-        println!("{}", hand);
-        assert_eq!(hand, hand::Hand::pairs(vec![12], vec![8, 7, 6]));
+        assert_eq!(hand, Hand::pairs(&vec![12], &vec![8, 7, 6]));
     }
 }
