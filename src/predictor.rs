@@ -5,16 +5,15 @@ pub fn predict(players: &[Deck]) -> (f32, f32) {
     let deck = players.iter().sum();
     let combinations = find_all_combinations(deck, 5);
     let odds = compare_player_hands(players, &combinations);
-    let tie_odds: f32= odds.iter().sum();
-    (odds[0], 1f32 - tie_odds)
+    (odds[0], 1f32 - odds.iter().sum::<f32>())
 }
 
 fn find_all_combinations(mut deck: Deck, k: u32) -> Vec<Deck> {
     let n = deck.count_zeros() - 12;
     assert!(n >= k);
-    // println!("n={}", n);
-    // let combination_num = calculate_combination_num(n, k as u32);
-    let mut combinations = vec![]; //vec![0 as Deck; combination_num];
+    let combination_num = calculate_combination_num(n, k as u32);
+    let mut combinations = vec![];
+    combinations.reserve(combination_num as usize);
     find_next_combination(&mut combinations, &mut deck, 52 - n + k, 0);
     return combinations;
 }
@@ -24,9 +23,11 @@ fn calculate_combination_num(n: u32, k: u32) -> u64 {
     assert!(n >= k);
     let factorial = |begin: u32, end: u32| {
         let mut f: u64 = 1;
-        (begin..end+1).for_each(|i| {
+        
+        for i in begin..end+1 {
             f *= i as u64;
-        });
+        }
+
         f
     };
 
@@ -39,13 +40,13 @@ fn find_next_combination(combinations: &mut Vec<u64>, deck: &mut u64, hand_size:
         return;
     }
 
-    (index..52).for_each(|i| {
+    for i in index..52 {
         if *deck & ((0x1 as u64) << i) == 0 {
             *deck |= 0x1 << i;
             find_next_combination(combinations, deck, hand_size, i + 1);
             *deck -= 0x1 << i;
         }
-    });
+    }
 }
 
 fn compare_player_hands(players: &[Deck], combinations: &[Deck]) -> Vec<f32> {
@@ -60,10 +61,10 @@ fn compare_player_hands(players: &[Deck], combinations: &[Deck]) -> Vec<f32> {
         for i in 1..players.len() {
             let combination = combination + players[i];
             hands.push(analyser::analyse(combination));
-            match hands[hands.len() - 1].partial_cmp(&hands[hands.len() - 2]) {
+            match hands[winner_index].partial_cmp(&hands[hands.len() - 1]) {
                 Some(std::cmp::Ordering::Equal) => winners.push(i),
-                Some(std::cmp::Ordering::Less) => {},
-                Some(std::cmp::Ordering::Greater) => {
+                Some(std::cmp::Ordering::Greater) => {},
+                Some(std::cmp::Ordering::Less) => {
                     winner_index = i;
                     winners.clear();
                     winners.push(i);
