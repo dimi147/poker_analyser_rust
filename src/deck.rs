@@ -18,17 +18,15 @@ pub fn to_deck<T: AsRef<str>>(cards: &[T]) -> Deck
 pub fn from_deck(deck: Deck) -> Vec<String> {
     assert_eq!(deck >> 52, 0);
     let mut v = vec![];
-    (0..52).for_each(|i|{
+    for i in 0..52 {
         if (deck & 0x1 << i) > 0 {
             v.push(card_to_string(i));
         }
-    });
+    };
     v
 }
 
 pub fn card_to_string(value: u8) -> String {
-    // let suit = ;
-    // let number = value % 13;
     String::from(
         match value % 13 {
             0 => "2",

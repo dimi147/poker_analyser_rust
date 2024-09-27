@@ -147,9 +147,9 @@ fn analyse_suits_separately(suits: &[Suit; 4]) -> Data {
 }
 
 fn analyse_merged_suits(merged: Suit, data: &mut Data) {
-    (0..9).for_each(|v| {
+    for v in 0..9 {
         analyse_straight(merged, &mut data.straight, 0x1f << v, v + 4);
-    });
+    }
 
     analyse_straight(merged, &mut data.straight, 0x100f, 3);
 }
@@ -167,18 +167,16 @@ fn check_quads(data: &Data) -> Option<Hand> {
         let mut value = 0;
         let mut kicker = 0;
 
-        data.values.iter().enumerate().rev().try_for_each(|(i, count)| {
+        for (i, count) in data.values.iter().enumerate().rev() {
             match count {
                 4 => value = i as u8,
                 _ => kicker = max(kicker, i as u8),
             }
 
             if value > 0 && kicker > 0 {
-                return ControlFlow::Break((i, count));
+                break;
             }
-
-            ControlFlow::Continue(())
-        });
+        }
 
         return Some(Hand::quads(value, kicker));
 
@@ -193,17 +191,16 @@ fn check_fullhouse(data: &Data) -> Option<Hand> {
         let mut set: Option<u8> = None;
         let mut pair: Option<u8> = None;
 
-        data.values.iter().enumerate().rev().for_each(|(i, count)| {
+        for (i, count) in data.values.iter().enumerate().rev() {
             if *count == 3 && set.is_none() {
                 set = Some(i as u8);
             } else if *count > 1 && pair.is_none() {
                 pair = Some(i as u8);
             }
-        });
+        }
 
         return Some(Hand::fullhouse(set.unwrap(), pair.unwrap()));
-
-    } 
+    }
 
     None
 }
@@ -213,12 +210,12 @@ fn check_flush(data: &Data, suits: &[Suit; 4]) -> Option<Hand> {
         let mut cards: Vec<u8> = vec!();
         let suit = suits[data.flushsuit.unwrap() as usize];
 
-        (0..13).rev().for_each(|i: u8| {
+        for i in (0..13).rev() {
             let mask = (1 as Suit) << i;
             if suit & mask > 0 {
                 cards.push(i);
             }
-        });
+        }
 
         return Some(Hand::flush(cards[cards.len()-5..].try_into().unwrap(), data.flushsuit.unwrap()));
     }
@@ -267,14 +264,14 @@ fn check_pairs(data: &Data) -> Option<Hand> {
         let mut pairs: Vec<u8> = vec!();
         let mut kickers: Vec<u8> = vec!();
 
-        data.values.iter().enumerate().rev().for_each(|(i, count)| {
+        for (i, count) in data.values.iter().enumerate().rev() {
             let numpairs = match data.numpairs > 1 { true => 2, false => 1};
             if *count > 1 && pairs.len() < numpairs as usize {
                 pairs.push(i as u8);
             } else if *count >= 1 && kickers.len() < 5 - (2 * numpairs) as usize {
                 kickers.push(i as u8);
             }
-        });
+        }
 
         return Some(Hand::pairs(&pairs, &kickers));
 
