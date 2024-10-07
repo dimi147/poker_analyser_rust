@@ -1,11 +1,18 @@
 use crate::deck::Deck;
 use crate::analyser;
 
-pub fn predict(players: &[Deck]) -> (f32, f32) {
-    let deck = players.iter().sum();
+pub fn predict(players: &[Deck]) -> Vec<f32> {
+    let mut deck = 0;
+
+    for player in players {
+        assert_eq!(deck & player, 0, "Detected card that has been dealt more than once");
+        deck += player;
+    }
+
     let combinations = find_all_combinations(deck, 5);
+    println!("Found {} distinct combinations of boards", combinations.len());
     let odds = compare_player_hands(players, &combinations);
-    (odds[0], 1f32 - odds.iter().sum::<f32>())
+    odds
 }
 
 fn find_all_combinations(mut deck: Deck, k: u32) -> Vec<Deck> {
@@ -55,6 +62,7 @@ fn compare_player_hands(players: &[Deck], combinations: &[Deck]) -> Vec<f32> {
 
     for combination in combinations.iter().map(|c| c - all_players) {
         let mut hands = vec![analyser::analyse(combination + players[0])];
+        hands.reserve(players.len());
         let mut winner_index = 0;
         let mut winners = vec![winner_index];
 
@@ -86,6 +94,7 @@ fn compare_player_hands(players: &[Deck], combinations: &[Deck]) -> Vec<f32> {
 #[cfg(test)]
 mod test {
     use super::{*};
+    use crate::deck;
 
     #[test]
     fn test_n50_k5() {
@@ -119,5 +128,21 @@ mod test {
         let odds = compare_player_hands(players, &combinations);
         let tie_odds = 1f32 - odds[0] - odds[1];
         assert_eq!((tie_odds * 100000f32).trunc() as i32, 637);
+    }
+
+    #[test]
+    fn test_6_way_hand() {
+        let players = vec![
+            deck::to_deck(&["Ac", "Ad"]), 
+            deck::to_deck(&["7d", "2c"]),
+            deck::to_deck(&["7c", "2d"]),
+            deck::to_deck(&["8c", "2h"]),
+            deck::to_deck(&["Ks", "Qs"]),
+            deck::to_deck(&["Th", "9s"]),
+        ];
+        let odds = predict(&players);
+        assert_eq!((odds[0] * 10000f32).trunc() as i32, 5609);
+        assert_eq!((odds[1..].iter().sum::<f32>() * 10000f32).trunc() as i32, 3952);
+        assert_eq!(((1f32 - odds.iter().sum::<f32>()) * 10000f32).trunc() as i32, 437);
     }
 }

@@ -26,11 +26,13 @@ fn main() {
         std::io::stdout().flush().unwrap();
         std::io::stdin().read_line(&mut buf).unwrap();
         let mut it = buf.split(' ');
-        let deck: deck::Deck = deck::to_deck(&[it.next().unwrap(), it.next().unwrap()]);
+        let deck = deck::to_deck(&[it.next().unwrap(), it.next().unwrap()]);
         players.push(deck);
     }
 
-    let (odds, tie_odds) = crate::predictor::predict(&players);
-    println!("Winning odds {:.2}. Tie odds {:.2}.", odds * 100f32, tie_odds * 100f32);
+    let odds = predictor::predict(&players);
+    println!("Winning odds {:.2}", odds[0] * 100f32);
+    println!("Opponent odds {:.2}", odds[1..].iter().sum::<f32>() * 100f32);
+    println!("Tie odds {:.2}", 100f32 - odds.iter().sum::<f32>() * 100f32);
 }
 
